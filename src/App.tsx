@@ -44,6 +44,11 @@ const App: React.FC = () => {
   // Timeline
   const [timelineZoom, setTimelineZoom] = useState(1);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  
+  // UI State
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [videoFitMode, setVideoFitMode] = useState<'contain' | 'cover' | 'fill'>('contain');
 
   // Undo/Redo
   const [undoStack, setUndoStack] = useState<UndoRedoState[]>([]);
@@ -51,8 +56,7 @@ const App: React.FC = () => {
 
   // Auto-save
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
-// App.tsx - Update this line near the top of the component
-  const videoRef = useRef<HTMLVideoElement>(null!); // Remove | null from type, use null! assertion
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Load auto-saved data on mount
   useEffect(() => {
@@ -187,10 +191,11 @@ const App: React.FC = () => {
   const mergeAdjacentSegments = useCallback(() => {
     pushToUndo();
     setSegments((prev) => {
+      if (prev.length === 0) return prev;
       const merged: Segment[] = [];
       let current = prev[0];
       for (let i = 1; i < prev.length; i++) {
-        if (current.label === prev[i].label && current.endTime === prev[i].startTime) {
+        if (current.label === prev[i].label && Math.abs(current.endTime - prev[i].startTime) < 0.001) {
           current = { ...current, endTime: prev[i].endTime };
         } else {
           merged.push(current);
@@ -231,7 +236,6 @@ const App: React.FC = () => {
     setSegmentStartTime(currentVideoTime);
     setSelectedLabelForSegment(labelClasses[0]?.name || '');
     setIsCreatingSegment(true);
-    // Don't stop the video - let it keep playing
   }, [currentTime, labelClasses, videoRef]);
 
   // End the current segment (mark out point)
@@ -243,7 +247,6 @@ const App: React.FC = () => {
       }
     }
     setIsCreatingSegment(false);
-    // Don't stop the video - let it keep playing
   }, [isCreatingSegment, selectedLabelForSegment, segmentStartTime, currentTime, addSegment]);
 
   // Cancel segment creation
@@ -308,7 +311,6 @@ const App: React.FC = () => {
         splitSegmentAtCurrentTime();
       } else if (e.key === 'n' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
-        // Toggle segment creation
         if (!isCreatingSegment) {
           handleStartSegment();
         } else {
@@ -341,11 +343,29 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-            Temporal Action Segmentation
-          </h1>
+        <div className="px-4 py-2 flex items-center justify-between">
           <div className="flex items-center space-x-4">
+            <h1 className="text-lg font-bold text-gray-900 dark:text-white">
+              Temporal Action Segmentation
+            </h1>
+            <div className="flex items-center space-x-1">
+              <button
+                onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
+                className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+                title="Toggle left panel"
+              >
+                {leftPanelCollapsed ? '◀' : '◁'}
+              </button>
+              <button
+                onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+                className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+                title="Toggle right panel"
+              >
+                {rightPanelCollapsed ? '▶' : '▷'}
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
             <button
               onClick={() => setShowKeyboardShortcuts(true)}
               className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
@@ -363,10 +383,10 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex gap-6">
-          {/* Left sidebar */}
-          <div className="w-80 flex-shrink-0 space-y-6">
+      <main className="h-[calc(100vh-3.5rem)] flex gap-2 p-2">
+        {/* Left sidebar - collapsible */}
+        {!leftPanelCollapsed && (
+          <div className="w-72 flex-shrink-0 space-y-2 overflow-y-auto">
             <LabelManager
               labelClasses={labelClasses}
               setLabelClasses={setLabelClasses}
@@ -388,9 +408,11 @@ const App: React.FC = () => {
             />
             <Stats segments={segments} labelClasses={labelClasses} videoDuration={videoDuration} />
           </div>
+        )}
 
-          {/* Main content */}
-          <div className="flex-1 space-y-6">
+        {/* Main content area */}
+        <div className="flex-1 flex flex-col min-w-0 space-y-2">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden flex-shrink-0">
             <VideoPlayer
               videoUrl={videoUrl}
               onVideoUpload={handleVideoUpload}
@@ -403,76 +425,82 @@ const App: React.FC = () => {
               videoError={videoError}
               isLoading={isLoading}
               videoRef={videoRef}
+              videoFitMode={videoFitMode}
+              onVideoFitModeChange={setVideoFitMode}
             />
-
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-4">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Timeline</h2>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {formatTime(currentTime)} / {formatTime(videoDuration)}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <button
-                    onClick={mergeAdjacentSegments}
-                    className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-                    title="Merge adjacent segments with same label"
-                  >
-                    Merge Adjacent
-                  </button>
-                  <label className="flex items-center space-x-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={allowOverlap}
-                      onChange={(e) => setAllowOverlap(e.target.checked)}
-                      className="rounded"
-                    />
-                    <span className="text-gray-700 dark:text-gray-300">Allow overlap</span>
-                  </label>
-                </div>
-              </div>
-              <Timeline
-                segments={segments}
-                videoDuration={videoDuration}
-                currentTime={currentTime}
-                onTimeUpdate={(time) => {
-                  setCurrentTime(time);
-                  if (videoRef.current) {
-                    videoRef.current.currentTime = time;
-                  }
-                }}
-                zoom={timelineZoom}
-                onZoomChange={setTimelineZoom}
-                selectedSegmentId={selectedSegmentId}
-                onSegmentSelect={setSelectedSegmentId}
-                onSegmentUpdate={updateSegment}
-                onSegmentDelete={deleteSegment}
-                onAddSegment={addSegment}
-                labelClasses={labelClasses}
-                allowOverlap={allowOverlap}
-                fps={fps}
-                videoRef={videoRef}
-                isCreatingSegment={isCreatingSegment}
-                segmentStartTime={segmentStartTime}
-              />
-            </div>
           </div>
 
-          {/* Right Segment Creation Panel */}
-          <SegmentCreationPanel
-            isCreating={isCreatingSegment}
-            segmentStartTime={segmentStartTime}
-            currentTime={currentTime}
-            selectedLabel={selectedLabelForSegment}
-            labelClasses={labelClasses}
-            onLabelChange={setSelectedLabelForSegment}
-            onEndSegment={handleEndSegment}
-            onCancelSegment={handleCancelSegment}
-            onStartSegment={handleStartSegment}
-            fps={fps}
-          />
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 flex-shrink-0">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-3">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Timeline</h2>
+                <span className="text-xs text-gray-600 dark:text-gray-400">
+                  {formatTime(currentTime)} / {formatTime(videoDuration)}
+                </span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={mergeAdjacentSegments}
+                  className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                  title="Merge adjacent segments with same label"
+                >
+                  Merge
+                </button>
+                <label className="flex items-center space-x-1 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={allowOverlap}
+                    onChange={(e) => setAllowOverlap(e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-gray-700 dark:text-gray-300">Overlap</span>
+                </label>
+              </div>
+            </div>
+            <Timeline
+              segments={segments}
+              videoDuration={videoDuration}
+              currentTime={currentTime}
+              onTimeUpdate={(time) => {
+                setCurrentTime(time);
+                if (videoRef.current) {
+                  videoRef.current.currentTime = time;
+                }
+              }}
+              zoom={timelineZoom}
+              onZoomChange={setTimelineZoom}
+              selectedSegmentId={selectedSegmentId}
+              onSegmentSelect={setSelectedSegmentId}
+              onSegmentUpdate={updateSegment}
+              onSegmentDelete={deleteSegment}
+              onAddSegment={addSegment}
+              labelClasses={labelClasses}
+              allowOverlap={allowOverlap}
+              fps={fps}
+              videoRef={videoRef}
+              isCreatingSegment={isCreatingSegment}
+              segmentStartTime={segmentStartTime}
+            />
+          </div>
         </div>
+
+        {/* Right Segment Creation Panel - collapsible */}
+        {!rightPanelCollapsed && (
+          <div className="w-72 flex-shrink-0 overflow-y-auto">
+            <SegmentCreationPanel
+              isCreating={isCreatingSegment}
+              segmentStartTime={segmentStartTime}
+              currentTime={currentTime}
+              selectedLabel={selectedLabelForSegment}
+              labelClasses={labelClasses}
+              onLabelChange={setSelectedLabelForSegment}
+              onEndSegment={handleEndSegment}
+              onCancelSegment={handleCancelSegment}
+              onStartSegment={handleStartSegment}
+              fps={fps}
+            />
+          </div>
+        )}
       </main>
 
       {showKeyboardShortcuts && (

@@ -1,4 +1,3 @@
-// components/VideoPlayer.tsx
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { formatTime } from '../utils/timeFormat';
 
@@ -13,7 +12,9 @@ interface VideoPlayerProps {
   fps: number;
   videoError: string;
   isLoading: boolean;
-  videoRef: React.RefObject<HTMLVideoElement>; // Changed to allow null
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  videoFitMode: 'contain' | 'cover' | 'fill';
+  onVideoFitModeChange: (mode: 'contain' | 'cover' | 'fill') => void;
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -28,27 +29,28 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   videoError,
   isLoading,
   videoRef,
+  videoFitMode,
+  onVideoFitModeChange,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [volume, setVolume] = useState(1);
-  const [localVideoError, setLocalVideoError] = useState(''); // Add local error state
+  const [localVideoError, setLocalVideoError] = useState('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type.startsWith('video/')) {
-      setLocalVideoError(''); // Clear any previous errors
+      setLocalVideoError('');
       onVideoUpload(file);
     } else if (file) {
       setLocalVideoError('Please select a valid video file');
     }
   };
 
- // components/VideoPlayer.tsx - Update handleLoadedMetadata
   const handleLoadedMetadata = useCallback(() => {
     if (videoRef.current) {
       const duration = videoRef.current.duration;
-      // Try to get FPS from video track
       let videoFps = 30;
       try {
         const videoElement = videoRef.current as any;
@@ -140,18 +142,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const displayError = videoError || localVideoError;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+    <div className="flex flex-col h-full">
       {!videoUrl ? (
-        <div className="p-12 text-center">
+        <div className="p-8 text-center flex items-center justify-center min-h-[200px]">
           <div
-            className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-12 cursor-pointer hover:border-blue-500 transition-colors"
+            className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 cursor-pointer hover:border-blue-500 transition-colors max-w-md w-full"
             onClick={() => fileInputRef.current?.click()}
           >
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="mx-auto h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
             </svg>
-            <p className="mt-4 text-lg font-medium text-gray-900 dark:text-white">Upload Video File</p>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Click to browse or drag and drop</p>
+            <p className="mt-3 text-base font-medium text-gray-900 dark:text-white">Upload Video File</p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Click to browse or drag and drop</p>
             <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Supports MP4, WebM, AVI</p>
           </div>
           <input
@@ -164,28 +166,35 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         </div>
       ) : (
         <>
-          {isLoading && (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            </div>
-          )}
-          {displayError && (
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400">
-              {displayError}
-            </div>
-          )}
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            className="w-full"
-            onLoadedMetadata={handleLoadedMetadata}
-            onTimeUpdate={handleTimeUpdate}
-            onError={handleVideoError}
-            preload="metadata"
-          />
-          <div className="p-4 bg-gray-50 dark:bg-gray-900 space-y-3">
+          <div ref={containerRef} className="relative bg-black flex items-center justify-center" style={{ maxHeight: '60vh' }}>
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              </div>
+            )}
+            {displayError && (
+              <div className="absolute top-0 left-0 right-0 p-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm z-10">
+                {displayError}
+              </div>
+            )}
+            <video
+              ref={videoRef as React.RefObject<HTMLVideoElement>}
+              src={videoUrl}
+              className="w-full"
+              style={{ 
+                maxHeight: '60vh',
+                objectFit: videoFitMode
+              }}
+              onLoadedMetadata={handleLoadedMetadata}
+              onTimeUpdate={handleTimeUpdate}
+              onError={handleVideoError}
+              preload="metadata"
+            />
+          </div>
+          
+          <div className="p-3 bg-gray-50 dark:bg-gray-900 space-y-2 flex-shrink-0">
             {/* Progress bar */}
-            <div className="relative w-full h-1 bg-gray-200 dark:bg-gray-700 rounded cursor-pointer"
+            <div className="relative w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded cursor-pointer group"
               onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const x = e.clientX - rect.left;
@@ -204,42 +213,60 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
                 {/* Play/Pause */}
-                <button onClick={togglePlay} className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                <button onClick={togglePlay} className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white p-1">
                   {isPlaying ? (
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
                     </svg>
                   ) : (
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M8 5v14l11-7z"/>
                     </svg>
                   )}
                 </button>
 
                 {/* Frame step */}
-                <button onClick={() => stepFrame(-1)} className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" title="Previous frame">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <button onClick={() => stepFrame(-1)} className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-1" title="Previous frame">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
                   </svg>
                 </button>
-                <button onClick={() => stepFrame(1)} className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" title="Next frame">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <button onClick={() => stepFrame(1)} className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-1" title="Next frame">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M16 18h2V6h-2zm-11-7l8.5-6v12z"/>
                   </svg>
                 </button>
 
                 {/* Time display */}
-                <span className="text-sm font-mono text-gray-700 dark:text-gray-300">
+                <span className="text-xs font-mono text-gray-700 dark:text-gray-300">
                   {formatTime(currentTime)} / {formatTime(videoRef.current?.duration || 0)}
                 </span>
               </div>
 
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                {/* Video fit mode */}
+                <div className="flex items-center space-x-0.5">
+                  <button
+                    onClick={() => onVideoFitModeChange('contain')}
+                    className={`px-1.5 py-0.5 text-xs rounded ${videoFitMode === 'contain' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+                    title="Fit to screen"
+                  >
+                    Fit
+                  </button>
+                  <button
+                    onClick={() => onVideoFitModeChange('cover')}
+                    className={`px-1.5 py-0.5 text-xs rounded ${videoFitMode === 'cover' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+                    title="Fill screen"
+                  >
+                    Fill
+                  </button>
+                </div>
+
                 {/* Volume */}
-                <div className="flex items-center space-x-2">
-                  <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-center space-x-1">
+                  <svg className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
                   </svg>
                   <input
@@ -253,7 +280,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                       setVolume(vol);
                       if (videoRef.current) videoRef.current.volume = vol;
                     }}
-                    className="w-20 h-1"
+                    className="w-16 h-1"
                   />
                 </div>
 
@@ -265,7 +292,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     setPlaybackRate(speed);
                     if (videoRef.current) videoRef.current.playbackRate = speed;
                   }}
-                  className="text-sm border rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                  className="text-xs border rounded px-1.5 py-0.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
                 >
                   <option value="0.25">0.25x</option>
                   <option value="0.5">0.5x</option>

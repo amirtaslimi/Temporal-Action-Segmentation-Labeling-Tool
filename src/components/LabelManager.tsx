@@ -1,4 +1,3 @@
-// components/LabelManager.tsx
 import React, { useState } from 'react';
 import { LabelClass } from '../types';
 
@@ -33,34 +32,33 @@ const LabelManager: React.FC<LabelManagerProps> = ({ labelClasses, setLabelClass
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Label Classes</h2>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3">
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Labels</h2>
       
-      <div className="space-y-2 mb-4">
+      <div className="space-y-1 mb-2 max-h-48 overflow-y-auto">
         {labelClasses.map((lc) => (
-          <div key={lc.name} className="flex items-center space-x-2">
+          <div key={lc.name} className="flex items-center space-x-1.5">
             <input
               type="color"
               value={lc.color}
               onChange={(e) => updateLabelColor(lc.name, e.target.value)}
-              className="w-8 h-8 rounded cursor-pointer border-0"
+              className="w-6 h-6 rounded cursor-pointer border-0 p-0"
             />
             {editingLabel === lc.name ? (
               <input
                 type="text"
                 value={lc.name}
                 onChange={(e) => {
-                  onUpdate();
                   setLabelClasses(labelClasses.map(l => l.name === editingLabel ? { ...l, name: e.target.value } : l));
                 }}
                 onBlur={() => setEditingLabel(null)}
                 onKeyDown={(e) => e.key === 'Enter' && setEditingLabel(null)}
                 autoFocus
-                className="flex-1 border rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="flex-1 border rounded px-1.5 py-0.5 text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
             ) : (
               <span
-                className="flex-1 text-sm text-gray-900 dark:text-white cursor-pointer hover:text-blue-500"
+                className="flex-1 text-xs text-gray-900 dark:text-white cursor-pointer hover:text-blue-500 truncate"
                 onDoubleClick={() => setEditingLabel(lc.name)}
               >
                 {lc.name}
@@ -68,7 +66,7 @@ const LabelManager: React.FC<LabelManagerProps> = ({ labelClasses, setLabelClass
             )}
             <button
               onClick={() => deleteLabel(lc.name)}
-              className="text-red-500 hover:text-red-700 text-sm"
+              className="text-red-500 hover:text-red-700 text-xs px-1"
               title="Delete label"
             >
               ×
@@ -77,18 +75,18 @@ const LabelManager: React.FC<LabelManagerProps> = ({ labelClasses, setLabelClass
         ))}
       </div>
 
-      <div className="flex space-x-2">
+      <div className="flex space-x-1">
         <input
           type="text"
           value={newLabelName}
           onChange={(e) => setNewLabelName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && addLabel()}
-          placeholder="New label name..."
-          className="flex-1 border rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          placeholder="New label..."
+          className="flex-1 border rounded px-1.5 py-0.5 text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
         />
         <button
           onClick={addLabel}
-          className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="px-2 py-0.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
         >
           Add
         </button>
