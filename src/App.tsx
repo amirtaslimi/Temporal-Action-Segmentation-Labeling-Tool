@@ -1,4 +1,3 @@
-// App.tsx
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import VideoPlayer from './components/VideoPlayer';
 import Timeline from './components/Timeline';
@@ -7,6 +6,7 @@ import SegmentList from './components/SegmentList';
 import ExportManager from './components/ExportManager';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import Stats from './components/Stats';
+import SegmentCreationPanel from './components/SegmentCreationPanel';
 import { LabelClass, Segment, AnnotationData, UndoRedoState } from './types';
 import { saveToIndexedDB, loadFromIndexedDB, clearIndexedDB } from './utils/indexedDB';
 import { formatTime } from './utils/timeFormat';
@@ -36,6 +36,11 @@ const App: React.FC = () => {
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const [allowOverlap, setAllowOverlap] = useState(false);
 
+  // Segment creation state
+  const [isCreatingSegment, setIsCreatingSegment] = useState(false);
+  const [segmentStartTime, setSegmentStartTime] = useState(0);
+  const [selectedLabelForSegment, setSelectedLabelForSegment] = useState('');
+
   // Timeline
   const [timelineZoom, setTimelineZoom] = useState(1);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
@@ -46,7 +51,8 @@ const App: React.FC = () => {
 
   // Auto-save
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null!);
+// App.tsx - Update this line near the top of the component
+  const videoRef = useRef<HTMLVideoElement>(null!); // Remove | null from type, use null! assertion
 
   // Load auto-saved data on mount
   useEffect(() => {
@@ -58,7 +64,6 @@ const App: React.FC = () => {
           setSegments(saved.segments);
           setAllowOverlap(saved.allowOverlap || false);
           setFps(saved.fps || 30);
-          // Note: video file can't be auto-loaded from IndexedDB due to File API limitations
         }
       } catch (error) {
         console.error('Failed to load saved data:', error);
@@ -220,6 +225,32 @@ const App: React.FC = () => {
     });
   }, [segments, currentTime, pushToUndo]);
 
+  // Start creating a new segment (mark in point)
+  const handleStartSegment = useCallback(() => {
+    const currentVideoTime = videoRef.current?.currentTime || currentTime;
+    setSegmentStartTime(currentVideoTime);
+    setSelectedLabelForSegment(labelClasses[0]?.name || '');
+    setIsCreatingSegment(true);
+    // Don't stop the video - let it keep playing
+  }, [currentTime, labelClasses, videoRef]);
+
+  // End the current segment (mark out point)
+  const handleEndSegment = useCallback(() => {
+    if (isCreatingSegment && selectedLabelForSegment) {
+      const currentVideoTime = videoRef.current?.currentTime || currentTime;
+      if (currentVideoTime > segmentStartTime) {
+        addSegment(selectedLabelForSegment, segmentStartTime, currentVideoTime);
+      }
+    }
+    setIsCreatingSegment(false);
+    // Don't stop the video - let it keep playing
+  }, [isCreatingSegment, selectedLabelForSegment, segmentStartTime, currentTime, addSegment]);
+
+  // Cancel segment creation
+  const handleCancelSegment = useCallback(() => {
+    setIsCreatingSegment(false);
+  }, []);
+
   // Export data
   const exportData = useCallback((): AnnotationData => {
     return {
@@ -277,9 +308,16 @@ const App: React.FC = () => {
         splitSegmentAtCurrentTime();
       } else if (e.key === 'n' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
-        // Trigger new segment modal
-        const event = new CustomEvent('openNewSegmentModal', { detail: { time: currentTime } });
-        window.dispatchEvent(event);
+        // Toggle segment creation
+        if (!isCreatingSegment) {
+          handleStartSegment();
+        } else {
+          handleEndSegment();
+        }
+      } else if (e.key === 'Escape') {
+        if (isCreatingSegment) {
+          handleCancelSegment();
+        }
       } else if (e.key === '?') {
         setShowKeyboardShortcuts((prev) => !prev);
       }
@@ -287,11 +325,22 @@ const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedSegmentId, currentTime, handleUndo, handleRedo, deleteSegment, splitSegmentAtCurrentTime]);
+  }, [
+    selectedSegmentId,
+    currentTime,
+    handleUndo,
+    handleRedo,
+    deleteSegment,
+    splitSegmentAtCurrentTime,
+    isCreatingSegment,
+    handleStartSegment,
+    handleEndSegment,
+    handleCancelSegment
+  ]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+      <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">
             Temporal Action Segmentation
@@ -315,9 +364,9 @@ const App: React.FC = () => {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="flex gap-6">
           {/* Left sidebar */}
-          <div className="lg:col-span-1 space-y-6">
+          <div className="w-80 flex-shrink-0 space-y-6">
             <LabelManager
               labelClasses={labelClasses}
               setLabelClasses={setLabelClasses}
@@ -341,7 +390,7 @@ const App: React.FC = () => {
           </div>
 
           {/* Main content */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="flex-1 space-y-6">
             <VideoPlayer
               videoUrl={videoUrl}
               onVideoUpload={handleVideoUpload}
@@ -403,10 +452,26 @@ const App: React.FC = () => {
                 labelClasses={labelClasses}
                 allowOverlap={allowOverlap}
                 fps={fps}
-                videoRef={videoRef} // Add this line
+                videoRef={videoRef}
+                isCreatingSegment={isCreatingSegment}
+                segmentStartTime={segmentStartTime}
               />
             </div>
           </div>
+
+          {/* Right Segment Creation Panel */}
+          <SegmentCreationPanel
+            isCreating={isCreatingSegment}
+            segmentStartTime={segmentStartTime}
+            currentTime={currentTime}
+            selectedLabel={selectedLabelForSegment}
+            labelClasses={labelClasses}
+            onLabelChange={setSelectedLabelForSegment}
+            onEndSegment={handleEndSegment}
+            onCancelSegment={handleCancelSegment}
+            onStartSegment={handleStartSegment}
+            fps={fps}
+          />
         </div>
       </main>
 

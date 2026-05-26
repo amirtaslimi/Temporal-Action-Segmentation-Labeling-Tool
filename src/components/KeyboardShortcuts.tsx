@@ -6,19 +6,22 @@ interface KeyboardShortcutsProps {
 }
 
 const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose }) => {
-  const shortcuts = [
-    { key: 'Space', description: 'Play/Pause video' },
-    { key: '←/→', description: 'Seek -5s / +5s' },
-    { key: 'Shift + ←/→', description: 'Previous/Next frame' },
-    { key: 'N', description: 'New segment at current time' },
-    { key: 'S', description: 'Split segment at current time' },
-    { key: 'Delete/Backspace', description: 'Delete selected segment' },
-    { key: 'Ctrl/Cmd + Z', description: 'Undo' },
-    { key: 'Ctrl/Cmd + Shift + Z', description: 'Redo' },
-    { key: '?', description: 'Toggle this shortcuts overlay' },
-    { key: 'Double-click timeline', description: 'Add segment at position' },
-    { key: 'Right-click segment', description: 'Delete segment' },
-  ];
+// In KeyboardShortcuts.tsx, update the shortcuts array:
+const shortcuts = [
+  { key: 'Space', description: 'Play/Pause video' },
+  { key: '←/→', description: 'Seek -5s / +5s' },
+  { key: 'Shift + ←/→', description: 'Previous/Next frame' },
+  { key: 'N', description: 'Start/End segment while watching' },
+  { key: 'Esc', description: 'Cancel current segment' },
+  { key: 'S', description: 'Split segment at current time' },
+  { key: 'Delete/Backspace', description: 'Delete selected segment' },
+  { key: 'Ctrl/Cmd + Z', description: 'Undo' },
+  { key: 'Ctrl/Cmd + Shift + Z', description: 'Redo' },
+  { key: '?', description: 'Toggle this shortcuts overlay' },
+  { key: 'Double-click timeline', description: 'Add segment at position' },
+  { key: 'Right-click segment', description: 'Delete segment' },
+];
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

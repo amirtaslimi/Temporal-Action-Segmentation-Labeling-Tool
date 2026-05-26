@@ -1,4 +1,3 @@
-// types.ts
 export interface LabelClass {
   name: string;
   color: string;

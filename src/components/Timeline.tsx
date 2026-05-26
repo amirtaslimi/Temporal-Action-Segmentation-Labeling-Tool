@@ -1,4 +1,3 @@
-// components/Timeline.tsx
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Segment, LabelClass } from '../types';
 import { formatTime } from '../utils/timeFormat';
@@ -19,7 +18,9 @@ interface TimelineProps {
   labelClasses: LabelClass[];
   allowOverlap: boolean;
   fps: number;
-  videoRef: React.RefObject<HTMLVideoElement | null>; // Add this
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  isCreatingSegment?: boolean;
+  segmentStartTime?: number;
 }
 
 const Timeline: React.FC<TimelineProps> = ({
@@ -37,7 +38,9 @@ const Timeline: React.FC<TimelineProps> = ({
   labelClasses,
   allowOverlap,
   fps,
-  videoRef
+  videoRef,
+  isCreatingSegment,
+  segmentStartTime,
 }) => {
   const timelineRef = useRef<HTMLDivElement>(null);
   const [draggingSegment, setDraggingSegment] = useState<string | null>(null);
@@ -60,14 +63,12 @@ const Timeline: React.FC<TimelineProps> = ({
     return () => window.removeEventListener('openNewSegmentModal', handleOpenModal);
   }, []);
 
-  // Handle zoom with mouse wheel
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const newZoom = Math.max(0.5, Math.min(10, zoom + (e.deltaY > 0 ? -0.5 : 0.5)));
     onZoomChange(newZoom);
   }, [zoom, onZoomChange]);
 
-  // Convert x position to time
   const xToTime = useCallback((x: number): number => {
     if (!timelineRef.current) return 0;
     const rect = timelineRef.current.getBoundingClientRect();
@@ -76,12 +77,10 @@ const Timeline: React.FC<TimelineProps> = ({
     return Math.max(0, Math.min(videoDuration, relativeX / pixelsPerSecond));
   }, [pixelsPerSecond, videoDuration]);
 
-  // Convert time to x position
   const timeToX = useCallback((time: number): number => {
     return time * pixelsPerSecond;
   }, [pixelsPerSecond]);
 
-  // Handle segment drag
   const handleSegmentMouseDown = (e: React.MouseEvent, segmentId: string, edge?: 'left' | 'right') => {
     e.stopPropagation();
     e.preventDefault();
@@ -99,7 +98,6 @@ const Timeline: React.FC<TimelineProps> = ({
     }
   };
 
-  // Handle mouse move for drag/resize
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!dragStart || (!draggingSegment && !resizing)) return;
@@ -115,7 +113,6 @@ const Timeline: React.FC<TimelineProps> = ({
           const newStart = Math.max(0, segment.startTime + timeDelta);
           if (newStart < segment.endTime) {
             if (!allowOverlap) {
-              // Snap to adjacent segment
               const prevSegment = segments.find(s => s.endTime <= newStart && s.id !== segment.id);
               if (prevSegment && newStart < prevSegment.endTime) return;
             }
@@ -139,7 +136,6 @@ const Timeline: React.FC<TimelineProps> = ({
         let newStart = segment.startTime + timeDelta;
         let newEnd = segment.endTime + timeDelta;
 
-        // Boundary checks
         if (newStart < 0) {
           newStart = 0;
           newEnd = duration;
@@ -150,7 +146,6 @@ const Timeline: React.FC<TimelineProps> = ({
         }
 
         if (!allowOverlap) {
-          // Check for overlaps with other segments
           const overlapping = segments.some(s => 
             s.id !== segment.id && 
             ((newStart >= s.startTime && newStart < s.endTime) ||
@@ -181,7 +176,6 @@ const Timeline: React.FC<TimelineProps> = ({
     };
   }, [dragStart, draggingSegment, resizing, segments, xToTime, onSegmentUpdate, videoDuration, allowOverlap]);
 
-  // Handle timeline click
   const handleTimelineClick = (e: React.MouseEvent) => {
     if (draggingSegment || resizing) return;
     
@@ -189,22 +183,18 @@ const Timeline: React.FC<TimelineProps> = ({
     onTimeUpdate(time);
     onSegmentSelect(null);
 
-    // Check if clicking on empty space for new segment
     const clickedOnSegment = segments.some(seg => time >= seg.startTime && time <= seg.endTime);
     if (!clickedOnSegment && e.detail === 1) {
-      // Single click on empty space - set current time
       onTimeUpdate(time);
     }
   };
 
-  // Handle double click to add segment
   const handleTimelineDoubleClick = (e: React.MouseEvent) => {
     const time = xToTime(e.clientX);
     setNewSegmentTime(time);
     setShowNewSegmentModal(true);
   };
 
-  // Context menu
   const handleContextMenu = (e: React.MouseEvent, segmentId: string) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, segmentId });
@@ -217,7 +207,6 @@ const Timeline: React.FC<TimelineProps> = ({
 
   return (
     <div className="relative">
-      {/* Zoom controls */}
       <div className="flex items-center space-x-2 mb-2">
         <button
           onClick={() => onZoomChange(Math.max(0.5, zoom - 0.5))}
@@ -243,7 +232,6 @@ const Timeline: React.FC<TimelineProps> = ({
         <span className="text-sm text-gray-600 dark:text-gray-400">{zoom}x</span>
       </div>
 
-      {/* Timeline ruler */}
       <div
         ref={timelineRef}
         className="relative overflow-x-auto border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 cursor-crosshair"
@@ -253,7 +241,6 @@ const Timeline: React.FC<TimelineProps> = ({
         onWheel={handleWheel}
       >
         <div className="relative" style={{ width: `${totalWidth}px`, height: '100%' }}>
-          {/* Time ruler */}
           <div className="absolute top-0 left-0 right-0 h-6 border-b border-gray-300 dark:border-gray-600">
             {Array.from({ length: Math.ceil(videoDuration) + 1 }, (_, i) => (
               <div
@@ -266,7 +253,6 @@ const Timeline: React.FC<TimelineProps> = ({
             ))}
           </div>
 
-          {/* Segments */}
           <div className="absolute top-6 left-0 right-0 bottom-0">
             {segments.map((segment) => (
               <div
@@ -288,19 +274,16 @@ const Timeline: React.FC<TimelineProps> = ({
                 onMouseDown={(e) => handleSegmentMouseDown(e, segment.id)}
                 onContextMenu={(e) => handleContextMenu(e, segment.id)}
               >
-                {/* Left resize handle */}
                 <div
                   className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-black/20 rounded-l"
                   onMouseDown={(e) => handleSegmentMouseDown(e, segment.id, 'left')}
                 />
                 
-                {/* Right resize handle */}
                 <div
                   className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-black/20 rounded-r"
                   onMouseDown={(e) => handleSegmentMouseDown(e, segment.id, 'right')}
                 />
 
-                {/* Label */}
                 <div className="absolute inset-0 flex items-center justify-center overflow-hidden px-2">
                   <span className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
                     {segment.label}
@@ -313,7 +296,22 @@ const Timeline: React.FC<TimelineProps> = ({
               </div>
             ))}
 
-            {/* Playhead */}
+            {isCreatingSegment && segmentStartTime !== undefined && (
+              <div
+                className="absolute top-2 bottom-2 rounded border-2 border-dashed border-green-500 bg-green-500/10 animate-pulse"
+                style={{
+                  left: `${timeToX(segmentStartTime)}px`,
+                  width: `${timeToX(currentTime - segmentStartTime)}px`,
+                }}
+              >
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xs font-medium text-green-700 dark:text-green-400">
+                    Recording...
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div
               className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10 pointer-events-none"
               style={{ left: `${timeToX(currentTime)}px` }}
@@ -324,7 +322,6 @@ const Timeline: React.FC<TimelineProps> = ({
         </div>
       </div>
 
-      {/* Context menu */}
       {contextMenu && (
         <div
           className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg py-1"
@@ -345,7 +342,6 @@ const Timeline: React.FC<TimelineProps> = ({
         </div>
       )}
 
-      {/* Click outside to close context menu */}
       {contextMenu && (
         <div
           className="fixed inset-0 z-40"
@@ -364,8 +360,8 @@ const Timeline: React.FC<TimelineProps> = ({
           }}
           onClose={() => setShowNewSegmentModal(false)}
           fps={fps}
-          videoRef={videoRef} // Pass videoRef
-          onSeek={onTimeUpdate} // Pass the seek function
+          videoRef={videoRef}
+          onSeek={onTimeUpdate}
         />
       )}
     </div>
