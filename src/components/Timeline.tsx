@@ -19,6 +19,7 @@ interface TimelineProps {
   labelClasses: LabelClass[];
   allowOverlap: boolean;
   fps: number;
+  videoRef: React.RefObject<HTMLVideoElement | null>; // Add this
 }
 
 const Timeline: React.FC<TimelineProps> = ({
@@ -36,6 +37,7 @@ const Timeline: React.FC<TimelineProps> = ({
   labelClasses,
   allowOverlap,
   fps,
+  videoRef
 }) => {
   const timelineRef = useRef<HTMLDivElement>(null);
   const [draggingSegment, setDraggingSegment] = useState<string | null>(null);
@@ -362,6 +364,8 @@ const Timeline: React.FC<TimelineProps> = ({
           }}
           onClose={() => setShowNewSegmentModal(false)}
           fps={fps}
+          videoRef={videoRef} // Pass videoRef
+          onSeek={onTimeUpdate} // Pass the seek function
         />
       )}
     </div>

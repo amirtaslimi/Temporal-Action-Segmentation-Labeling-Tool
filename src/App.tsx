@@ -403,6 +403,7 @@ const App: React.FC = () => {
                 labelClasses={labelClasses}
                 allowOverlap={allowOverlap}
                 fps={fps}
+                videoRef={videoRef} // Add this line
               />
             </div>
           </div>
