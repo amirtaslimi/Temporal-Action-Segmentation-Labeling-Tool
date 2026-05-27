@@ -7,6 +7,7 @@ import ExportManager from './components/ExportManager';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import Stats from './components/Stats';
 import SegmentCreationPanel from './components/SegmentCreationPanel';
+import NewSessionDialog from './components/NewSessionDialog';
 import { LabelClass, Segment, AnnotationData, UndoRedoState } from './types';
 import { saveToIndexedDB, loadFromIndexedDB, clearIndexedDB } from './utils/indexedDB';
 import { formatTime } from './utils/timeFormat';
@@ -44,6 +45,7 @@ const App: React.FC = () => {
   // Timeline
   const [timelineZoom, setTimelineZoom] = useState(1);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [showNewSessionDialog, setShowNewSessionDialog] = useState(false);
   
   // UI State
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
@@ -94,6 +96,15 @@ const App: React.FC = () => {
       }
     };
   }, [labelClasses, segments, allowOverlap, fps]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (videoUrl) {
+        URL.revokeObjectURL(videoUrl);
+      }
+    };
+  }, [videoUrl]);
 
   // Push to undo stack before making changes
   const pushToUndo = useCallback(() => {
@@ -254,6 +265,57 @@ const App: React.FC = () => {
     setIsCreatingSegment(false);
   }, []);
 
+  // New Session
+  const handleNewSession = useCallback(() => {
+    // Save current session before clearing
+    if (segments.length > 0 || labelClasses.length > 0) {
+      saveToIndexedDB({
+        labelClasses,
+        segments,
+        allowOverlap,
+        fps,
+      }).then(() => {
+        console.log('Session saved before new session');
+      });
+    }
+    
+    // Clear video
+    if (videoUrl) {
+      URL.revokeObjectURL(videoUrl);
+    }
+    setVideoUrl('');
+    setVideoFile(null);
+    setVideoDuration(0);
+    setCurrentTime(0);
+    setIsPlaying(false);
+    setVideoError('');
+    
+    // Reset segments and labels
+    setSegments([]);
+    setSelectedSegmentId(null);
+    setLabelClasses([
+      { name: 'Walking', color: '#FF6B6B' },
+      { name: 'Running', color: '#4ECDC4' },
+      { name: 'Standing', color: '#45B7D1' },
+      { name: 'Sitting', color: '#96CEB4' },
+      { name: 'Opening Door', color: '#FFEAA7' },
+    ]);
+    
+    // Reset segment creation
+    setIsCreatingSegment(false);
+    setSegmentStartTime(0);
+    setSelectedLabelForSegment('');
+    
+    // Reset undo/redo
+    setUndoStack([]);
+    setRedoStack([]);
+    
+    // Reset timeline zoom
+    setTimelineZoom(1);
+    
+    setShowNewSessionDialog(false);
+  }, [videoUrl, segments, labelClasses, allowOverlap, fps]);
+
   // Export data
   const exportData = useCallback((): AnnotationData => {
     return {
@@ -302,6 +364,9 @@ const App: React.FC = () => {
         } else {
           handleUndo();
         }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        setShowNewSessionDialog(true);
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selectedSegmentId) {
           deleteSegment(selectedSegmentId);
@@ -367,6 +432,17 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center space-x-3">
             <button
+              onClick={() => setShowNewSessionDialog(true)}
+              className="px-3 py-1 text-sm bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors flex items-center space-x-1"
+              title="Start new session with different video"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>New Session</span>
+            </button>
+            
+            <button
               onClick={() => setShowKeyboardShortcuts(true)}
               className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
               title="Keyboard shortcuts"
@@ -384,7 +460,6 @@ const App: React.FC = () => {
       </nav>
 
       <main className="h-[calc(100vh-3.5rem)] flex gap-2 p-2">
-        {/* Left sidebar - collapsible */}
         {!leftPanelCollapsed && (
           <div className="w-72 flex-shrink-0 space-y-2 overflow-y-auto">
             <LabelManager
@@ -410,7 +485,6 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Main content area */}
         <div className="flex-1 flex flex-col min-w-0 space-y-2">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden flex-shrink-0">
             <VideoPlayer
@@ -484,7 +558,6 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Segment Creation Panel - collapsible */}
         {!rightPanelCollapsed && (
           <div className="w-72 flex-shrink-0 overflow-y-auto">
             <SegmentCreationPanel
@@ -505,6 +578,16 @@ const App: React.FC = () => {
 
       {showKeyboardShortcuts && (
         <KeyboardShortcuts onClose={() => setShowKeyboardShortcuts(false)} />
+      )}
+
+      {showNewSessionDialog && (
+        <NewSessionDialog
+          onConfirm={handleNewSession}
+          onCancel={() => setShowNewSessionDialog(false)}
+          segments={segments}
+          labelClasses={labelClasses}
+          videoFileName={videoFile?.name || ''}
+        />
       )}
     </div>
   );
