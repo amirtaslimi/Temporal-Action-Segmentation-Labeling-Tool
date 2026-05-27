@@ -16,6 +16,8 @@ This tool provides a complete workflow for creating such datasets:
 4. **Fine-tune segment boundaries** with frame-level precision
 5. **Export annotations** in JSON/CSV formats ready for model training
 
+![App Screenshot](images/sample.jpg)
+
 ## 🎯 Use Cases
 
 - **Academic Research**: Create labeled datasets for temporal action segmentation papers
