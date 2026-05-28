@@ -25,11 +25,19 @@ const App: React.FC = () => {
 
   // Label classes
   const [labelClasses, setLabelClasses] = useState<LabelClass[]>([
-    { name: 'Walking', color: '#FF6B6B' },
-    { name: 'Running', color: '#4ECDC4' },
-    { name: 'Standing', color: '#45B7D1' },
-    { name: 'Sitting', color: '#96CEB4' },
-    { name: 'Opening Door', color: '#FFEAA7' },
+    { name: 'Incision', color: '#4ECDC4' },
+    { name: 'Viscoelastic', color: '#f6ff46' },
+    { name: 'Capsulorhexis', color: '#96CEB4' },
+    { name: 'Hydrodissection', color: '#FFEAA7' },
+        { name: 'Phacoemulsification', color: '#6bffb3' },
+    { name: 'IrrigationAspiration', color: '#5bd613' },
+    { name: 'CapsulePolishing', color: '#45B7D1' },
+    { name: 'LensImplantation', color: '#9730a2' },
+            { name: 'LensPositioning', color: '#366b50' },
+    { name: 'ViscoelasticSuction', color: '#ff3dcb' },
+    { name: 'AnteriorChamberFlushing', color: '#ff0000' },
+    { name: 'TonifyingAntibiotics', color: '#848484' },
+    { name: 'Idle', color: '#FF6B6B' },
   ]);
 
   // Segments
@@ -294,11 +302,19 @@ const App: React.FC = () => {
     setSegments([]);
     setSelectedSegmentId(null);
     setLabelClasses([
-      { name: 'Walking', color: '#FF6B6B' },
-      { name: 'Running', color: '#4ECDC4' },
-      { name: 'Standing', color: '#45B7D1' },
-      { name: 'Sitting', color: '#96CEB4' },
-      { name: 'Opening Door', color: '#FFEAA7' },
+    { name: 'Incision', color: '#4ECDC4' },
+    { name: 'Viscoelastic', color: '#f6ff46' },
+    { name: 'Capsulorhexis', color: '#96CEB4' },
+    { name: 'Hydrodissection', color: '#FFEAA7' },
+        { name: 'Phacoemulsification', color: '#6bffb3' },
+    { name: 'IrrigationAspiration', color: '#5bd613' },
+    { name: 'CapsulePolishing', color: '#45B7D1' },
+    { name: 'LensImplantation', color: '#9730a2' },
+            { name: 'LensPositioning', color: '#366b50' },
+    { name: 'ViscoelasticSuction', color: '#ff3dcb' },
+    { name: 'AnteriorChamberFlushing', color: '#ff0000' },
+    { name: 'TonifyingAntibiotics', color: '#848484' },
+    { name: 'Idle', color: '#FF6B6B' },
     ]);
     
     // Reset segment creation

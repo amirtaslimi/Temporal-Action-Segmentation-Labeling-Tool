@@ -42,7 +42,7 @@ const SegmentList: React.FC<SegmentListProps> = ({
               }`}
               onClick={() => {
                 onSelect(segment.id);
-                onSeek(segment.startTime);
+                onSeek(segment.endTime);
               }}
             >
               <div className="flex items-center justify-between mb-1">

@@ -49,6 +49,12 @@ const Timeline: React.FC<TimelineProps> = ({
   const [showNewSegmentModal, setShowNewSegmentModal] = useState(false);
   const [newSegmentTime, setNewSegmentTime] = useState(0);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; segmentId: string } | null>(null);
+  const [showLabelChangeMenu, setShowLabelChangeMenu] = useState<{ 
+    x: number; 
+    y: number; 
+    segmentId: string;
+    currentLabel: string;
+  } | null>(null);
 
   const pixelsPerSecond = 100 * zoom;
   const totalWidth = videoDuration * pixelsPerSecond;
@@ -197,12 +203,52 @@ const Timeline: React.FC<TimelineProps> = ({
 
   const handleContextMenu = (e: React.MouseEvent, segmentId: string) => {
     e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, segmentId });
+    
+    // Calculate position - menu appears above the click point
+    const menuHeight = 150; // Approximate height of context menu
+    const menuX = e.clientX;
+    const menuY = e.clientY - menuHeight;
+    
+    // Ensure menu stays within viewport
+    const finalY = Math.max(10, menuY); // At least 10px from top
+    
+    setContextMenu({ x: menuX, y: finalY, segmentId });
   };
 
   const handleDeleteSegment = (segmentId: string) => {
     onSegmentDelete(segmentId);
     setContextMenu(null);
+  };
+
+  const handleChangeLabel = (segmentId: string) => {
+    const segment = segments.find(s => s.id === segmentId);
+    if (segment && contextMenu) {
+      // Position the label submenu to the right of the context menu
+      const labelMenuHeight = 300; // Approximate max height of label menu
+      const labelMenuX = contextMenu.x + 200;
+      const labelMenuY = contextMenu.y - 200;
+      
+      setShowLabelChangeMenu({
+        x: labelMenuX,
+        y: labelMenuY,
+        segmentId: segmentId,
+        currentLabel: segment.label,
+      });
+    }
+    setContextMenu(null);
+  };
+
+  const handleLabelSelect = (segmentId: string, newLabel: string, newColor: string) => {
+    onSegmentUpdate(segmentId, { 
+      label: newLabel,
+      color: newColor 
+    });
+    setShowLabelChangeMenu(null);
+  };
+
+  const handleCloseAllMenus = () => {
+    setContextMenu(null);
+    setShowLabelChangeMenu(null);
   };
 
   return (
@@ -322,31 +368,92 @@ const Timeline: React.FC<TimelineProps> = ({
         </div>
       </div>
 
+      {/* Context Menu - Positioned above the click point */}
       {contextMenu && (
-        <div
-          className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg py-1"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-        >
-          <button
-            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-            onClick={() => handleDeleteSegment(contextMenu.segmentId)}
+        <>
+          <div
+            className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[160px]"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
           >
-            Delete Segment
-          </button>
-          <button
-            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-            onClick={() => setContextMenu(null)}
-          >
-            Cancel
-          </button>
-        </div>
+            <button
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center space-x-2"
+              onClick={() => handleChangeLabel(contextMenu.segmentId)}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+              <span>Change Label</span>
+            </button>
+            <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+            <button
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 flex items-center space-x-2"
+              onClick={() => handleDeleteSegment(contextMenu.segmentId)}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span>Delete Segment</span>
+            </button>
+            <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+            <button
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 flex items-center space-x-2"
+              onClick={handleCloseAllMenus}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>Cancel</span>
+            </button>
+          </div>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={handleCloseAllMenus}
+          />
+        </>
       )}
 
-      {contextMenu && (
+      {/* Label Change Submenu */}
+      {showLabelChangeMenu && (
         <div
-          className="fixed inset-0 z-40"
-          onClick={() => setContextMenu(null)}
-        />
+          className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 max-h-80 overflow-y-auto min-w-[200px]"
+          style={{ left: showLabelChangeMenu.x, top: showLabelChangeMenu.y }}
+        >
+          <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
+            Select New Label
+          </div>
+          {labelClasses.map((labelClass) => (
+            <button
+              key={labelClass.name}
+              className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-3 ${
+                labelClass.name === showLabelChangeMenu.currentLabel 
+                  ? 'bg-blue-50 dark:bg-blue-900/20' 
+                  : ''
+              }`}
+              onClick={() => handleLabelSelect(
+                showLabelChangeMenu.segmentId, 
+                labelClass.name, 
+                labelClass.color
+              )}
+            >
+              <span
+                className="w-4 h-4 rounded-full flex-shrink-0 border-2 border-gray-300 dark:border-gray-600"
+                style={{ backgroundColor: labelClass.color }}
+              />
+              <span className={`flex-1 ${
+                labelClass.name === showLabelChangeMenu.currentLabel 
+                  ? 'text-blue-600 dark:text-blue-400 font-medium' 
+                  : 'text-gray-700 dark:text-gray-300'
+              }`}>
+                {labelClass.name}
+              </span>
+              {labelClass.name === showLabelChangeMenu.currentLabel && (
+                <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
       )}
 
       {showNewSegmentModal && (

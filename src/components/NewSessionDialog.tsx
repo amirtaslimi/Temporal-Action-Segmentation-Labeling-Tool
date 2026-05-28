@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Segment, LabelClass } from '../types';
 
 interface NewSessionDialogProps {
@@ -16,12 +16,9 @@ const NewSessionDialog: React.FC<NewSessionDialogProps> = ({
   labelClasses,
   videoFileName,
 }) => {
-  const [countdown, setCountdown] = useState(0);
-  const [confirmed, setConfirmed] = useState(false);
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && confirmed) {
+      if (e.key === 'Enter') {
         onConfirm();
       } else if (e.key === 'Escape') {
         onCancel();
@@ -29,24 +26,7 @@ const NewSessionDialog: React.FC<NewSessionDialogProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [confirmed, onConfirm, onCancel]);
-
-  const handleInitialConfirm = () => {
-    setConfirmed(true);
-    setCountdown(1);
-  };
-
-  useEffect(() => {
-    if (countdown > 0 && confirmed) {
-      const timer = setTimeout(() => {
-        setCountdown(countdown - 1);
-        if (countdown === 1) {
-          onConfirm();
-        }
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [countdown, confirmed, onConfirm]);
+  }, [onConfirm, onCancel]);
 
   const hasData = segments.length > 0 || labelClasses.length > 3;
 
@@ -73,73 +53,43 @@ const NewSessionDialog: React.FC<NewSessionDialogProps> = ({
         </div>
 
         <div className="space-y-4">
-          {!confirmed ? (
-            <>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                This will clear all current annotations and start fresh with a new video.
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            This will clear all current annotations and start fresh with a new video.
+          </p>
+
+          {hasData && (
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/30 rounded-lg p-3">
+              <p className="text-xs font-medium text-yellow-800 dark:text-yellow-300 mb-2">
+                Current session will be saved automatically:
               </p>
-
-              {hasData && (
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/30 rounded-lg p-3">
-                  <p className="text-xs font-medium text-yellow-800 dark:text-yellow-300 mb-2">
-                    Current session will be saved automatically:
-                  </p>
-                  <ul className="text-xs text-yellow-700 dark:text-yellow-400 space-y-1">
-                    <li>• Video: {videoFileName || 'None'}</li>
-                    <li>• Segments: {segments.length}</li>
-                    <li>• Labels: {labelClasses.length}</li>
-                  </ul>
-                </div>
-              )}
-
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                <p className="text-xs text-blue-700 dark:text-blue-300">
-                  💡 You can export your current annotations before starting a new session.
-                </p>
-              </div>
-
-              <div className="flex space-x-2">
-                <button
-                  onClick={onCancel}
-                  className="flex-1 px-4 py-2 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleInitialConfirm}
-                  className="flex-1 px-4 py-2 text-sm bg-orange-500 text-white rounded hover:bg-orange-600"
-                >
-                  Start New Session
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="text-center space-y-3">
-                <div className="animate-pulse">
-                  <svg className="w-12 h-12 text-orange-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    Starting new session in {countdown}...
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    All current data will be saved and cleared
-                  </p>
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={onCancel}
-                    className="flex-1 px-4 py-2 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </>
+              <ul className="text-xs text-yellow-700 dark:text-yellow-400 space-y-1">
+                <li>• Video: {videoFileName || 'None'}</li>
+                <li>• Segments: {segments.length}</li>
+                <li>• Labels: {labelClasses.length}</li>
+              </ul>
+            </div>
           )}
+
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+            <p className="text-xs text-blue-700 dark:text-blue-300">
+              💡 You can export your current annotations before starting a new session.
+            </p>
+          </div>
+
+          <div className="flex space-x-2">
+            <button
+              onClick={onCancel}
+              className="flex-1 px-4 py-2 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              className="flex-1 px-4 py-2 text-sm bg-orange-500 text-white rounded hover:bg-orange-600"
+            >
+              Start New Session
+            </button>
+          </div>
         </div>
       </div>
     </div>

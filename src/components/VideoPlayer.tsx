@@ -123,14 +123,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         if (e.shiftKey) {
           stepFrame(-1);
         } else {
-          seekBy(-5);
+          seekBy(-1);
+          // backward
         }
       } else if (e.code === 'ArrowRight') {
         e.preventDefault();
         if (e.shiftKey) {
           stepFrame(1);
         } else {
-          seekBy(5);
+          seekBy(1);
+          // forward
         }
       }
     };
